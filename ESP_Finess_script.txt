@@ -1,0 +1,91 @@
+//INSTALL
+//https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot
+//e ArduinoJson library written by Benoît Blanchon  (from Arduino IDE Library Manager)
+
+#define echoPin D7 // Echo Pin
+#define trigPin D6 // Trigger Pin
+#include <ESP8266WiFi.h>
+#include <UniversalTelegramBot.h>
+
+// VALUES YOU NEED TO CHANGE
+const char* ssid     = "WIFI_Network_Name";            //Name of your WiFi network
+const char* password = "WIFI_Network_Passw";  // Password of your WiFi network
+#define BOT_TOKEN "XXXXXXXXX:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" // Telegram BOT Token
+#define CHAT_ID "XXXXXX"                      // Telegram Chat ID where to send the message 
+const int TargetStairs = 1576;                  // Target of stairs you want to do (1576 is the Empire State Building Run-Up distance)
+const int YourStairs = 52;                      // Consecutive steps you have in the stairs you want to use (uphill)
+const int MaxDist = 80;                         // Maximum distance of an object (in cm) to count the passage in front of the sensor
+const int DelayAfterPass = 15;                   // Seconds of sleep after counting a passage (to avoid multiple passes in few seconds)
+
+// Other variables definition
+int MsgSent = 0;         // used to avoid multiple telegram notifications
+int count = 0;           // counts how many times you passed in front of the sensor
+long duration, distance; // Used by the sensor to calculate distance
+
+// Connection to the telegram bot
+WiFiClientSecure client;
+UniversalTelegramBot bot(BOT_TOKEN, client);
+
+void setup(){
+  Serial.begin(9600);
+  #ifdef ESP8266
+    client.setInsecure();
+  #endif
+  delay(10);
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  
+  // Connection to a WiFi network
+
+  Serial.println();
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  
+  /* Set ESP8266 to be a WiFi-client
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");  
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  delay(10000); //Waits 10 seconds before starting counting
+}
+ 
+ 
+ 
+void loop(){
+
+// Determine the distance of an object
+digitalWrite(trigPin, LOW);
+delayMicroseconds(2);
+digitalWrite(trigPin, HIGH);
+delayMicroseconds(10);
+digitalWrite(trigPin, LOW);
+duration = pulseIn(echoPin, HIGH);
+distance = duration/58.2; //Calculate the distance (in cm) based on the speed of sound.
+Serial.printf("distance: %d \n", distance); //only for debug
+Serial.printf("MaxDist: %d \n", MaxDist); //only for debug
+
+if (distance < MaxDist) { // if an object is found, counts +1, waits DelayAfterPass seconds and goes on
+  count=count+1;
+  if (count * YourStairs >= TargetStairs && MsgSent < 1){ //if the target is reached and the notification has never been sent, sends the message
+    Serial.printf("Empire State Building Completed\n!"); //only for debug
+    bot.sendMessage(CHAT_ID, "Empire State Building Completed!", ""); //put here the Telegram message you want to receive
+    MsgSent=1;
+  }
+  Serial.printf("count: %d \n", count); // only for debug
+  delay(DelayAfterPass*1000);
+}
+
+//Delay of 50ms before next distance reading.
+delay(50);
+}
